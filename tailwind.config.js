@@ -10,8 +10,6 @@ export default {
     extend: {
       fontFamily: {
         'archivo': ['Archivo', 'sans-serif'],
-        'afacad': ['Afacad', 'sans-serif'],
-        'montserrat': ['Montserrat', 'sans-serif'],
         'konkret': ['Konkret', 'sans-serif'],
         'headline': ['Konkret', 'sans-serif'],
         'body': ['Archivo', 'sans-serif'],

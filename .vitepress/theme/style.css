@@ -54,11 +54,6 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 1.75rem !important;
 }
 
-
-.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
-  color: #E25836; /* dac-orange */
-}
-
 /* Custom Grid Background if needed by DAC design system, but applied without breaking default theme */
 .grid-overlay {
   background-image: radial-gradient(circle, #455f8b 1px, transparent 1px);
@@ -101,6 +96,10 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 1rem !important;
 }
 
+.VPSidebarItem h2.text {
+    font-size: 1.2rem !important;
+}
+
 .VPSidebarItem h3.text {
     font-size: 1.1rem !important;
 }
@@ -137,3 +136,7 @@ h1, h2, h3, h4, h5, h6 {
   color: #aa3011 !important;
   border-bottom: 2px solid #aa3011 !important;
 }
+.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+  color: #E25836; /* dac-orange */
+}
+

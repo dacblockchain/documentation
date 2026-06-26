@@ -1,285 +1,8 @@
-# JSON RPC interfaces
+# Eth Module
 
-In order to accept incoming connections from the network you need to configure the `dacnode` accordingly.
+The `eth` module provides methods to interact with the ledger, query block/transaction details, manage filters, track logs, and deploy/interact with smart contracts.
 
-As a developer, you'll want to start interacting with `dacnode` and the DAC Blockchain network via your own programs and not manually through the console. To aid this, `dacnode` has built-in support for a JSON-RPC based APIs ([standard APIs](https://eth.wiki/json-rpc/API)). These can be exposed via HTTP, WebSockets and IPC (UNIX sockets on UNIX based platforms, and named pipes on Windows).
-
-The IPC interface is enabled by default and exposes all the APIs supported by `dacnode`, whereas the HTTP and WS interfaces need to manually be enabled and only expose a subset of APIs due to security reasons. These can be turned on/off and configured as you'd expect.
-
-[JSON-RPC](https://www.jsonrpc.org/specification) is a stateless, light-weight remote procedure call (RPC) protocol. It defines several data structures and the rules around their processing. It is transport agnostic in that the concepts can be used within the same process, over sockets, over HTTP, or in many various message passing environments. It uses JSON (RFC 4627) as data format.
-
-## Available APIs
-
-Here you can check the available [JSON-RPC calls](https://playground.open-rpc.org/?schemaUrl=https://gist.githubusercontent.com/ziogaschr/c51916d70ca5304bb3e3abf4dcd518ca/raw/8079eafd8de6436bd3e4ab6c9df0db64c25cd1a6/core-geth_rpc-discovery_1.11.21-unstable.json).
-
-## Node configuration
-
-`dacnode` can be configured to accept RPC calls over HTTP, WebSocket and IPC. 
-
-#### HTTP
-
-* `--http` Enable the HTTP-RPC server
-* `--http.addr` HTTP-RPC server listening interface (default: `localhost`)
-* `--http.port` HTTP-RPC server listening port (default: `8545`)
-* `--http.api` API's offered over the HTTP-RPC interface (default: `eth,net,web3`)
-* `--http.corsdomain` Comma separated list of domains from which to accept cross origin requests (browser enforced)
-
-#### WebSocket
-
-* `--ws` Enable the WS-RPC server
-* `--ws.addr` WS-RPC server listening interface (default: `localhost`)
-* `--ws.port` WS-RPC server listening port (default: `8546`)
-* `--ws.api` API's offered over the WS-RPC interface (default: `eth,net,web3`)
-* `--ws.origins` Origins from which to accept websockets requests
-
-#### GraphQL
-
-* `--graphql` Enable GraphQL on the HTTP-RPC server. Note that GraphQL can only be started if an HTTP server is started as well.
-* `--graphql.corsdomain` Comma separated list of domains from which to accept cross origin requests (browser enforced)
-* `--graphql.vhosts` Comma separated list of virtual hostnames from which to accept requests (server enforced). Accepts '\*' wildcard. (default: "localhost")
-
-#### IPC
-
-* `--ipcdisable` Disable the IPC-RPC server
-* `--ipcapi` API's offered over the IPC-RPC interface (default: `admin,debug,eth,miner,net,personal,shh,txpool,web3`)
-* `--ipcpath` Filename for IPC socket/pipe within the datadir (explicit paths escape it)
-
-### Hex value encoding {#hex-encoding}
-
-Two key data types get passed over JSON: unformatted byte arrays and quantities. Both are passed with a hex encoding but with different requirements for formatting.
-
-#### Quantities {#quantities-encoding}
-
-When encoding quantities (integers, numbers): encode as hex, prefix with "0x", the most compact representation (slight exception: zero should be represented as "0x0").
-
-Here are some examples:
-
-- 0x41 (65 in decimal)
-- 0x400 (1024 in decimal)
-- WRONG: 0x (should always have at least one digit - zero is "0x0")
-- WRONG: 0x0400 (no leading zeroes allowed)
-- WRONG: ff (must be prefixed 0x)
-
-### Unformatted data {#unformatted-data-encoding}
-
-When encoding unformatted data (byte arrays, account addresses, hashes, bytecode arrays): encode as hex, prefix with "0x", two hex digits per byte.
-
-Here are some examples:
-
-- 0x41 (size 1, "A")
-- 0x004200 (size 3, "0B0")
-- 0x (size 0, "")
-- WRONG: 0xf0f0f (must be even number of digits)
-- WRONG: 004200 (must be prefixed 0x)
-
-### The block parameter {#block-parameter}
-
-The following methods have a block parameter:
-
-- [eth_getBalance](#eth-getbalance)
-- [eth_getCode](#eth-getcode)
-- [eth_getTransactionCount](#eth-gettransactioncount)
-- [eth_getStorageAt](#eth-getstorageat)
-- [eth_call](#eth-call)
-
-When requests are made that query the state of the DAC Blockchain, the provided block parameter determines the height of the block.
-
-The following options are possible for the block parameter:
-
-- `HEX String` - an integer block number
-- `String "earliest"` for the earliest/genesis block
-- `String "latest"` - for the latest proposed block
-- `String "safe"` - for the latest safe head block
-- `String "finalized"` - for the latest finalized block
-- `String "pending"` - for the pending state/transactions
-
-## Examples {#examples}
-
-On this page we provide examples of how to use individual JSON_RPC API endpoints using the command line tool, [curl](https://curl.se). These individual endpoint examples are found below in the [Curl examples](#curl-examples) section. Further down the page, we also provide an [end-to-end example](#usage-example) for compiling and deploying a smart contract using a Geth node, the JSON_RPC API and curl.
-
-## Curl examples {#curl-examples}
-
-Examples of using the JSON_RPC API by making [curl](https://curl.se) requests to a DAC Blockchain node are provided below. Each example
-includes a description of the specific endpoint, its parameters, return type, and a worked example of how it should be used.
-
-The curl requests might return an error message relating to the content type. This is because the `--data` option sets the content type to `application/x-www-form-urlencoded`. If your node does complain about this, manually set the header by placing `-H "Content-Type: application/json"` at the start of the call. The examples also do not include the URL/IP & port combination which must be the last argument given to curl (e.g., `http://localhost:8545`). A complete curl request including these additional data takes the following form:
-
-```shell
-curl -H "Content-Type: application/json" -X POST --data '{"jsonrpc":"2.0","method":"web3_clientVersion","params":[],"id":67}' 127.0.0.1:8545
-```
-
-## Gossip, State, History {#gossip-state-history}
-
-A handful of core JSON-RPC methods require data from the DAC Blockchain network, and fall neatly into three main categories: _Gossip, State, and History_. Use the links in these sections to jump to each method, or use the table of contents to explore the whole list of methods.
-
-### Gossip Methods {#gossip-methods}
-
-> These methods track the head of the chain. This is how transactions make their way around the network, find their way into blocks, and how clients find out about new blocks.
-
-- [eth_blockNumber](#eth-blocknumber)
-- [eth_sendRawTransaction](#eth-sendrawtransaction)
-
-### State Methods {#state-methods}
-
-> Methods that report the current state of all the data stored. The "state" is like one big shared piece of RAM, and includes account balances, contract data, and gas estimations.
-
-- [eth_getBalance](#eth-getbalance)
-- [eth_getStorageAt](#eth-getstorageat)
-- [eth_getTransactionCount](#eth-gettransactioncount)
-- [eth_getCode](#eth-getcode)
-- [eth_call](#eth-call)
-- [eth_estimateGas](#eth-estimategas)
-
-### History Methods {#history-methods}
-
-> Fetches historical records of every block back to genesis. This is like one large append-only file, and includes all block headers, block bodies, uncle blocks, and transaction receipts.
-
-- [eth_getBlockTransactionCountByHash](#eth-getblocktransactioncountbyhash)
-- [eth_getBlockTransactionCountByNumber](#eth-getblocktransactioncountbynumber)
-- [eth_getUncleCountByBlockHash](#eth-getunclecountbyblockhash)
-- [eth_getUncleCountByBlockNumber](#eth-getunclecountbyblocknumber)
-- [eth_getBlockByHash](#eth-getblockbyhash)
-- [eth_getBlockByNumber](#eth-getblockbynumber)
-- [eth_getTransactionByHash](#eth-gettransactionbyhash)
-- [eth_getTransactionByBlockHashAndIndex](#eth-gettransactionbyblockhashandindex)
-- [eth_getTransactionByBlockNumberAndIndex](#eth-gettransactionbyblocknumberandindex)
-- [eth_getTransactionReceipt](#eth-gettransactionreceipt)
-- [eth_getUncleByBlockHashAndIndex](#eth-getunclebyblockhashandindex)
-- [eth_getUncleByBlockNumberAndIndex](#eth-getunclebyblocknumberandindex)
-
-## JSON-RPC API Methods {#json-rpc-methods}
-
-### web3_clientVersion {#web3-clientversion}
-
-Returns the current client version.
-
-**Parameters**
-
-None
-
-**Returns**
-
-`String` - The current client version
-
-**Example**
-
-```js
-// Request
-curl -X POST --data '{"jsonrpc":"2.0","method":"web3_clientVersion","params":[],"id":67}'
-// Result
-{
-  "id":67,
-  "jsonrpc":"2.0",
-  "result": "Geth/v1.12.1-stable/linux-amd64/go1.19.1"
-}
-```
-
-### web3_sha3 {#web3-sha3}
-
-Returns Keccak-256 (_not_ the standardized SHA3-256) of the given data.
-
-**Parameters**
-
-1. `DATA` - The data to convert into a SHA3 hash
-
-```js
-params: ["0x68656c6c6f20776f726c64"]
-```
-
-**Returns**
-
-`DATA` - The SHA3 result of the given string.
-
-**Example**
-
-```js
-// Request
-curl -X POST --data '{"jsonrpc":"2.0","method":"web3_sha3","params":["0x68656c6c6f20776f726c64"],"id":64}'
-// Result
-{
-  "id":64,
-  "jsonrpc": "2.0",
-  "result": "0x47173285a8d7341e5e972fc677286384f802f8ef42a5ec5f03bbfa254cb01fad"
-}
-```
-
-### net_version {#net-version}
-
-Returns the current network id.
-
-**Parameters**
-
-None
-
-**Returns**
-
-`String` - The current network id.
-
-- `21892`: DAC Interstellar Mainnet
-- `21894`: DAC Inception Testnet
-
-**Example**
-
-```js
-// Request
-curl -X POST --data '{"jsonrpc":"2.0","method":"net_version","params":[],"id":67}'
-// Result
-{
-  "id":67,
-  "jsonrpc": "2.0",
-  "result": "3"
-}
-```
-
-### net_listening {#net-listening}
-
-Returns `true` if client is actively listening for network connections.
-
-**Parameters**
-
-None
-
-**Returns**
-
-`Boolean` - `true` when listening, otherwise `false`.
-
-**Example**
-
-```js
-// Request
-curl -X POST --data '{"jsonrpc":"2.0","method":"net_listening","params":[],"id":67}'
-// Result
-{
-  "id":67,
-  "jsonrpc":"2.0",
-  "result":true
-}
-```
-
-### net_peerCount {#net-peercount}
-
-Returns number of peers currently connected to the client.
-
-**Parameters**
-
-None
-
-**Returns**
-
-`QUANTITY` - integer of the number of connected peers.
-
-**Example**
-
-```js
-// Request
-curl -X POST --data '{"jsonrpc":"2.0","method":"net_peerCount","params":[],"id":74}'
-// Result
-{
-  "id":74,
-  "jsonrpc": "2.0",
-  "result": "0x2" // 2
-}
-```
+---
 
 ### eth_protocolVersion {#eth-protocolversion}
 
@@ -305,6 +28,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_protocolVersion","params":[]
   "result": "54"
 }
 ```
+
+---
 
 ### eth_syncing {#eth-syncing}
 
@@ -390,6 +115,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_syncing","params":[],"id":1}
 }
 ```
 
+---
+
 ### eth_chainId {#eth-chainid}
 
 Returns the chain ID used for signing replay-protected transactions.
@@ -414,6 +141,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":67
   "result": "0x1"
 }
 ```
+
+---
 
 ### eth_mining {#eth-mining}
 
@@ -440,6 +169,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_mining","params":[],"id":71}
 }
 ```
 
+---
+
 ### eth_hashrate {#eth-hashrate}
 
 Returns the number of hashes per second that the node is mining with. 
@@ -464,6 +195,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_hashrate","params":[],"id":7
   "result": "0x38a"
 }
 ```
+
+---
 
 ### eth_gasPrice {#eth-gasprice}
 
@@ -490,6 +223,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_gasPrice","params":[],"id":7
 }
 ```
 
+---
+
 ### eth_accounts {#eth-accounts}
 
 Returns a list of addresses owned by client.
@@ -515,6 +250,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_accounts","params":[],"id":1
 }
 ```
 
+---
+
 ### eth_blockNumber {#eth-blocknumber}
 
 Returns the number of the most recent block.
@@ -539,6 +276,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id
   "result": "0x4b7" // 1207
 }
 ```
+
+---
 
 ### eth_getBalance {#eth-getbalance}
 
@@ -569,6 +308,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBalance","params":["0x407
   "result": "0x0234c8a3397aab58" // 158972490234375000
 }
 ```
+
+---
 
 ### eth_getStorageAt {#eth-getstorageat}
 
@@ -638,6 +379,8 @@ curl -X POST --data '{"jsonrpc":"2.0", "method": "eth_getStorageAt", "params": [
 {"jsonrpc":"2.0","id":1,"result":"0x000000000000000000000000000000000000000000000000000000000000162e"}
 ```
 
+---
+
 ### eth_getTransactionCount {#eth-gettransactioncount}
 
 Returns the number of transactions _sent_ from an address.
@@ -671,6 +414,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionCount","params
 }
 ```
 
+---
+
 ### eth_getBlockTransactionCountByHash {#eth-getblocktransactioncountbyhash}
 
 Returns the number of transactions in a block from a block matching the given block hash.
@@ -699,6 +444,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockTransactionCountByHa
   "result": "0x8b" // 139
 }
 ```
+
+---
 
 ### eth_getBlockTransactionCountByNumber {#eth-getblocktransactioncountbynumber}
 
@@ -731,6 +478,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockTransactionCountByNu
 }
 ```
 
+---
+
 ### eth_getUncleCountByBlockHash {#eth-getunclecountbyblockhash}
 
 Returns the number of uncles in a block from a block matching the given block hash.
@@ -759,6 +508,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getUncleCountByBlockHash","p
   "result": "0x1" // 1
 }
 ```
+
+---
 
 ### eth_getUncleCountByBlockNumber {#eth-getunclecountbyblocknumber}
 
@@ -791,6 +542,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getUncleCountByBlockNumber",
 }
 ```
 
+---
+
 ### eth_getCode {#eth-getcode}
 
 Returns code at a given address.
@@ -820,9 +573,11 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getCode","params":["0xC02aaA
 {
   "id":1,
   "jsonrpc": "2.0",
-  "result": "0x6060604052600436106100af576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff16806306fdde03146100b9578063095ea7b31461014757806318160ddd146101a157806323b872dd146101ca5780632e1a7d4d14610243578063313ce5671461026657806370a082311461029557806395d89b41146102e2578063a9059cbb14610370578063d0e30db0146103ca578063dd62ed3e146103d4575b6100b7610440565b005b34156100c457600080fd5b6100cc6104dd565b6040518080602001828103825283818151815260200191508051906020019080838360005b8381101561010c5780820151818401526020810190506100f1565b50505050905090810190601f1680156101395780820380516001836020036101000a031916815260200191505b509250505060405180910390f35b341561015257600080fd5b610187600480803573ffffffffffffffffffffffffffffffffffffffff1690602001909190803590602001909190505061057b565b604051808215151515815260200191505060405180910390f35b34156101ac57600080fd5b6101b461066d565b6040518082815260200191505060405180910390f35b34156101d557600080fd5b610229600480803573ffffffffffffffffffffffffffffffffffffffff1690602001909190803573ffffffffffffffffffffffffffffffffffffffff1690602001909190803590602001909190505061068c565b604051808215151515815260200191505060405180910390f35b341561024e57600080fd5b61026460048080359060200190919050506109d9565b005b341561027157600080fd5b610279610b05565b604051808260ff1660ff16815260200191505060405180910390f35b34156102a057600080fd5b6102cc600480803573ffffffffffffffffffffffffffffffffffffffff16906020019091905050610b18565b6040518082815260200191505060405180910390f35b34156102ed57600080fd5b6102f5610b30565b6040518080602001828103825283818151815260200191508051906020019080838360005b8381101561033557808201518184015260208101905061031a565b50505050905090810190601f1680156103625780820380516001836020036101000a031916815260200191505b509250505060405180910390f35b341561037b57600080fd5b6103b0600480803573ffffffffffffffffffffffffffffffffffffffff16906020019091908035906020019091905050610bce565b604051808215151515815260200191505060405180910390f35b6103d2610440565b005b34156103df57600080fd5b61042a600480803573ffffffffffffffffffffffffffffffffffffffff1690602001909190803573ffffffffffffffffffffffffffffffffffffffff16906020019091905050610be3565b6040518082815260200191505060405180910390f35b34600360003373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020600082825401925050819055503373ffffffffffffffffffffffffffffffffffffffff167fe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c346040518082815260200191505060405180910390a2565b60008054600181600116156101000203166002900480601f0160208091040260200160405190810160405280929190818152602001828054600181600116156101000203166002900480156105735780601f1061054857610100808354040283529160200191610573565b820191906000526020600020905b81548152906001019060200180831161055657829003601f168201915b505050505081565b600081600460003373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060008573ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020819055508273ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff167f8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925846040518082815260200191505060405180910390a36001905092915050565b60003073ffffffffffffffffffffffffffffffffffffffff1631905090565b600081600360008673ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002054101515156106dc57600080fd5b3373ffffffffffffffffffffffffffffffffffffffff168473ffffffffffffffffffffffffffffffffffffffff16141580156107b457507fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff600460008673ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060003373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1681526020019081526020016000205414155b156108cf5781600460008673ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060003373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020541015151561084457600080fd5b81600460008673ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060003373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020600082825403925050819055505b81600360008673ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1681526020019081526020016000206000828254039250508190555081600360008573ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020600082825401925050819055508273ffffffffffffffffffffffffffffffffffffffff168473ffffffffffffffffffffffffffffffffffffffff167fddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef846040518082815260200191505060405180910390a3600190509392505050565b80600360003373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1681526020019081526020016000205410151515610a2757600080fd5b80600360003373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020600082825403925050819055503373ffffffffffffffffffffffffffffffffffffffff166108fc829081150290604051600060405180830381858888f193505050501515610ab457600080fd5b3373ffffffffffffffffffffffffffffffffffffffff167f7fcf532c15f0a6db0bd6d0e038bea71d30d808c7d98cb3bf7268a95bf5081b65826040518082815260200191505060405180910390a250565b600260009054906101000a900460ff1681565b60036020528060005260406000206000915090505481565b60018054600181600116156101000203166002900480601f016020809104026020016040519081016040528092919081815260200182805460018160011615610100020316600290048015610bc65780601f10610b9b57610100808354040283529160200191610bc6565b820191906000526020600020905b815481529060010190602001808311610ba957829003601f168201915b505050505081565b6000610bdb33848461068c565b905092915050565b60046020528160005260406000206020528060005260406000206000915091505054815600a165627a7a72305820deb4c2ccab3c2fdca32ab3f46728389c2fe2c165d5fafa07661e4e004f6c344a0029"
+  "result": "0x6060604052600436106100af576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff16806306fdde03146100b9578063095ea7b31461014757806318160ddd146101a157806323b872dd146101ca5780632e1a7d4d14610243578063313ce5671461026657806370a082311461029557806395d89b41146102e2578063a9059cbb14610370578063d0e30db0146103ca578063dd62ed3e146103d4575b6100b7610440565b005b34156100c457600080fd5b6100cc6104dd565b6040518080602001828103825283818151815260200191508051906020019080838360005b8381101561010c5780820151818401526020810190506100f1565b50505050905090810190601f1680156101395780820380516001836020036101000a031916815260200191505b509250505060405180910390f35b341561015257600080fd5b610187600480803573ffffffffffffffffffffffffffffffffffffffff1690602001909190803590602001909190505061057b565b604051808215151515815260200191505060405180910390f35b34156101ac57600080fd5b6101b461066d565b6040518082815260200191505060405180910390f35b34156101d557600080fd5b610229600480803573ffffffffffffffffffffffffffffffffffffffff1690602001909190803573ffffffffffffffffffffffffffffffffffffffff1690602001909190803590602001909190505061068c565b604051808215151515815260200191505060405180910390f35b341561024e57600080fd5b61026460048080359060200190919050506109d9565b005b341561027157600080fd5b610279610b05565b604051808260ff1660ff16815260200191505060405180910390f35b34156102a057600080fd5b6102cc600480803573ffffffffffffffffffffffffffffffffffffffff16906020019091905050610b18565b6040518082815260200191505060405180910390f35b34156102ed57600080fd5b6102f5610b30565b6040518080602001828103825283818151815260200191508051906020019080838360005b8381101561033557808201518184015260208101905061031a565b50505050905090810190601f1680156103625780820380516001836020036101000a031916815260200191505b509250505060405180910390f35b341561037b57600080fd5b6103b0600480803573ffffffffffffffffffffffffffffffffffffffff16906020019091908035906020019091905050610bce565b604051808215151515815260200191505060405180910390f35b6103d2610440565b005b34156103df57600080fd5b61042a600480803573ffffffffffffffffffffffffffffffffffffffff1690602001909190803573ffffffffffffffffffffffffffffffffffffffff16906020019091905050610be3565b6040518082815260200191505060405180910390f35b34600360003373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020600082825401925050819055503373ffffffffffffffffffffffffffffffffffffffff167fe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c346040518082815260200191505060405180910390a2565b60008054600181600116156101000203166002900480601f0160208091040260200160405190810160405280929190818152602001828054600181600116156101000203166002900480156105735780601f1061054857610100808354040283529160200191610573565b820191906000526020600020905b81548152906001019060200180831161055657829003601f168201915b505050505081565b600081600460003373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020819055508273ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff167f8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925846040518082815260200191505060405180910390a36001905092915050565b60003073ffffffffffffffffffffffffffffffffffffffff1631905090565b600081600360008673ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002054101515156106dc57600080fd5b3373ffffffffffffffffffffffffffffffffffffffff168473ffffffffffffffffffffffffffffffffffffffff16141580156107b457507fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff600460008673ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060003373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1681526020019081526020016000205414155b156108cf5781600460008673ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060003373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020541015151561084457600080fd5b81600460008673ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060003373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020600082825403925050819055505b81600360008673ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1681526020019081526020016000206000828254039250508190555081600360008573ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020600082825401925050819055508273ffffffffffffffffffffffffffffffffffffffff168473ffffffffffffffffffffffffffffffffffffffff167fddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef846040518082815260200191505060405180910390a3600190509392505050565b80600360003373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1681526020019081526020016000205410151515610a2757600080fd5b80600360003373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020600082825403925050819055503373ffffffffffffffffffffffffffffffffffffffff166108fc829081150290604051600060405180830381858888f193505050501515610ab457600080fd5b3373ffffffffffffffffffffffffffffffffffffffff167f7fcf532c15f0a6db0bd6d0e038bea71d30d808c7d98cb3bf7268a95bf5081b65826040518082815260200191505060405180910390a250565b600260009054906101000a900460ff1681565b60036020528060005260406000206000915090505481565b60018054600181600116156101000203166002900480601f016020809104026020016040519081016040528092919081815260200182805460018160011615610100020316600290048015610bc65780601f10610b9b57610100808354040283529160200191610bc6565b820191906000526020600020905b815481529060010190602001808311610ba957829003601f168201915b505050505081565b6000610bdb33848461068c565b905092915050565b60046020528160005260406000206020528060005260406000206000915091505054815600a165627a7a72305820deb4c2ccab3c2fdca32ab3f46728389c2fe2c165d5fafa07661e4e004f6c344a0029"
 }
 ```
+
+---
 
 ### eth_sign {#eth-sign}
 
@@ -853,6 +608,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sign","params":["0x9b2055d37
   "result": "0xa3f20717a250c2b0b729b7e5becbff67fdaef7e0699da4de7ca5895b02a170a12d887fd3b17bfdce3481f10bea41f45ba9f709d39ce8325427b57afcfc994cee1b"
 }
 ```
+
+---
 
 ### eth_signTransaction {#eth-signtransaction}
 
@@ -887,6 +644,8 @@ curl -X POST --data '{"id": 1,"jsonrpc": "2.0","method": "eth_signTransaction","
     "result": "0xa3f20717a250c2b0b729b7e5becbff67fdaef7e0699da4de7ca5895b02a170a12d887fd3b17bfdce3481f10bea41f45ba9f709d39ce8325427b57afcfc994cee1b"
 }
 ```
+
+---
 
 ### eth_sendTransaction {#eth-sendtransaction}
 
@@ -937,6 +696,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sendTransaction","params":[{
 }
 ```
 
+---
+
 ### eth_sendRawTransaction {#eth-sendrawtransaction}
 
 Creates new message call transaction or a contract creation for signed transactions.
@@ -969,6 +730,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sendRawTransaction","params"
   "result": "0xe670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331"
 }
 ```
+
+---
 
 ### eth_call {#eth-call}
 
@@ -1004,6 +767,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_call","params":[{see above}]
 }
 ```
 
+---
+
 ### eth_estimateGas {#eth-estimategas}
 
 Generates and returns an estimate of how much gas is necessary to allow the transaction to complete. The transaction will not be added to the blockchain. Note that the estimate may be significantly more than the amount of gas actually used by the transaction, for a variety of reasons including EVM mechanics and node performance.
@@ -1028,6 +793,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_estimateGas","params":[{see 
   "result": "0x5208" // 21000
 }
 ```
+
+---
 
 ### eth_getBlockByHash {#eth-getblockbyhash}
 
@@ -1084,7 +851,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockByHash","params":["0
     "gasLimit": "0x1388",
     "gasUsed": "0x0",
     "hash": "0xdc0818cf78f21a8e70579cb46a43643f78291264dda342ae31049421c82d21ae",
-    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "logsBloom": "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
     "miner": "0xbb7b8287f3f0a933474a79eae42cbca977791171",
     "mixHash": "0x4fffe9ae21f1c9e15207b1f472d5bbdd68c9595d461666602f2be20daf5e7843",
     "nonce": "0x689056015818adbe",
@@ -1104,6 +871,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockByHash","params":["0
   }
 }
 ```
+
+---
 
 ### eth_getBlockByNumber {#eth-getblockbynumber}
 
@@ -1132,6 +901,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":[
 ```
 
 Result see [eth_getBlockByHash](#eth-getblockbyhash)
+
+---
 
 ### eth_getTransactionByHash {#eth-gettransactionbyhash}
 
@@ -1192,6 +963,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionByHash","param
 }
 ```
 
+---
+
 ### eth_getTransactionByBlockHashAndIndex {#eth-gettransactionbyblockhashandindex}
 
 Returns information about a transaction by block hash and transaction index position.
@@ -1220,6 +993,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionByBlockHashAnd
 
 Result see [eth_getTransactionByHash](#eth-gettransactionbyhash)
 
+---
+
 ### eth_getTransactionByBlockNumberAndIndex {#eth-gettransactionbyblocknumberandindex}
 
 Returns information about a transaction by block number and transaction index position.
@@ -1247,6 +1022,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionByBlockNumberA
 ```
 
 Result see [eth_getTransactionByHash](#eth-gettransactionbyhash)
+
+---
 
 ### eth_getTransactionReceipt {#eth-gettransactionreceipt}
 
@@ -1316,6 +1093,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionReceipt","para
 }
 ```
 
+---
+
 ### eth_getUncleByBlockHashAndIndex {#eth-getunclebyblockhashandindex}
 
 Returns information about an uncle of a block by hash and uncle index position.
@@ -1346,6 +1125,8 @@ Result see [eth_getBlockByHash](#eth-getblockbyhash)
 
 **Note**: An uncle doesn't contain individual transactions.
 
+---
+
 ### eth_getUncleByBlockNumberAndIndex {#eth-getunclebyblocknumberandindex}
 
 Returns information about an uncle of a block by number and uncle index position.
@@ -1375,6 +1156,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getUncleByBlockNumberAndInde
 ```
 
 Result see [eth_getBlockByHash](#eth-getblockbyhash)
+
+---
 
 ### eth_newFilter {#eth-newfilter}
 
@@ -1432,6 +1215,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_newFilter","params":[{"topic
 }
 ```
 
+---
+
 ### eth_newBlockFilter {#eth-newblockfilter}
 
 Creates a filter in the node, to notify when a new block arrives.
@@ -1456,6 +1241,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_newBlockFilter","params":[],
 }
 ```
 
+---
+
 ### eth_newPendingTransactionFilter {#eth-newpendingtransactionfilter}
 
 Creates a filter in the node, to notify when new pending transactions arrive.
@@ -1479,6 +1266,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_newPendingTransactionFilter"
   "result": "0x1" // 1
 }
 ```
+
+---
 
 ### eth_uninstallFilter {#eth-uninstallfilter}
 
@@ -1510,6 +1299,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_uninstallFilter","params":["
   "result": true
 }
 ```
+
+---
 
 ### eth_getFilterChanges {#eth-getfilterchanges}
 
@@ -1565,6 +1356,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getFilterChanges","params":[
 }
 ```
 
+---
+
 ### eth_getFilterLogs {#eth-getfilterlogs}
 
 Returns an array of all logs matching filter with given id.
@@ -1590,6 +1383,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getFilterLogs","params":["0x
 ```
 
 Result see [eth_getFilterChanges](#eth-getfilterchanges)
+
+---
 
 ### eth_getLogs {#eth-getlogs}
 
@@ -1626,6 +1421,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"topics"
 ```
 
 Result see [eth_getFilterChanges](#eth-getfilterchanges)
+
+---
 
 ## Usage Example {#usage-example}
 
@@ -1767,7 +1564,9 @@ web3.sha3("Print(uint256)")
 
 This was just a brief introduction into some of the most common tasks, demonstrating direct usage of the JSON-RPC.
 
-## Related topics {#related-topics}
+---
+
+## Related Topics {#related-topics}
 
 - [JSON-RPC specification](http://www.jsonrpc.org/specification)
 - [JSON RPC API on Ethereum.org](https://ethereum.org/developers/docs/apis/json-rpc/)

@@ -51,7 +51,19 @@ export default defineConfig({
             text: 'DAC Nodes',
             link: '/ecosystem/dac-nodes/',
             items: [
+              {
+                text: 'Automated Installation',
+                link: '/ecosystem/dac-nodes/automated-installation',
+                items: [
+                  { text: 'Linux Installation', link: '/ecosystem/dac-nodes/installer-linux' },
+                  { text: 'macOS Installation', link: '/ecosystem/dac-nodes/installer-macos' },
+                  { text: 'Windows Installation', link: '/ecosystem/dac-nodes/installer-windows' }
+                ]
+              },
               { text: 'Manual Installation', link: '/ecosystem/dac-nodes/manual-installation' },
+              { text: 'Post-Install Mining', link: '/ecosystem/dac-nodes/post-install-mining' },
+              { text: 'Status Monitor', link: '/ecosystem/dac-nodes/status-monitor' },
+              { text: 'Migration Guide', link: '/ecosystem/dac-nodes/migration' },
               { text: 'JavaScript Console', link: '/ecosystem/dac-nodes/javascript-console' }
             ]
           },
@@ -67,6 +79,7 @@ export default defineConfig({
       {
         text: 'Development',
         items: [
+          { text: 'Public Mainnet Tools & Resources', link: '/development/public-mainnet-tools-and-resources' },
           { text: 'Public Testnet Tools & Resources', link: '/development/public-testnet-tools-and-resources' },
           { text: 'Local Testnet Tools', link: '/development/local-testnet-tools' },
           { text: 'Obtaining Testnet DACC (Faucet)', link: '/development/obtaining-testnet-dacc-faucet' },
@@ -98,7 +111,9 @@ export default defineConfig({
     ],
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/dac-blockchain' },
+      { icon: 'github', link: 'https://github.com/dacblockchain' },
+      { icon: 'telegram', link: 'https://t.me/dac_chain' },
+      { icon: 'x', link: 'https://x.com/dac_chain' },
       { icon: 'discord', link: 'https://discord.gg/dacchain' }
     ]
   }
