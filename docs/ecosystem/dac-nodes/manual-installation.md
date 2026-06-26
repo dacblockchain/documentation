@@ -77,6 +77,7 @@ curl -L -o dacnode https://repo.dachain.tech/node/dev/darwin/arm64/dacnode
 
     ```bash
     chmod +x dacnode
+    xattr -d com.apple.quarantine dacnode
     ```
 2.  Run the node on Testnet:
 

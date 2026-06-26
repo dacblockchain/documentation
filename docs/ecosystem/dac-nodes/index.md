@@ -28,3 +28,27 @@ To be recognised as a Validator node, a Token Holder needs to:
 ## Light Nodes
 
 Light Nodes are nodes of the network that does not perform mining operations. As DAC blockchain is open and public, anyone can run a Light Node and contribute to the expansion of the network, increasing data decentralization and distribution.
+
+---
+
+## Installation & Operations
+
+Get your node up and running on the DAC network using one of our automated installers, a manual deployment, or migrate an existing setup.
+
+### Automated Installation
+Quickly set up your node as a managed service:
+*   [Linux Installation](./installer-linux.md)
+*   [macOS Installation](./installer-macos.md)
+*   [Windows Installation](./installer-windows.md)
+
+### Manual Setup & Console
+For advanced controls and non-daemonized setups:
+*   [Manual Installation](./manual-installation.md)
+*   [JavaScript Console](./javascript-console.md)
+
+### Post-Install & Management
+Configure node features and monitor status:
+*   [Post-Install Mining Setup](./post-install-mining.md)
+*   [Status Monitor](./status-monitor.md)
+*   [Migration Guide (Quadrans to DAC)](./migration.md)
+
