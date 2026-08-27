@@ -1,35 +1,49 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
-const accepted = ref(true)
-
-onMounted(() => {
-  const cookieConsent = localStorage.getItem('cookieConsent')
-  console.log('CookieBar mounted. Current consent:', cookieConsent)
-  if (!cookieConsent) {
-    console.log('No consent found, showing cookie bar')
-    accepted.value = false
-  } else if (cookieConsent === 'true') {
-    console.log('Consent found, not showing')
-    // Re-initialize tracking if previously accepted
-    if ((window as any).gtag) {
-      (window as any).gtag('config', 'G-5FGBERQXNP');
-    }
-  }
-})
-
-const accept = () => {
-  localStorage.setItem('cookieConsent', 'true')
-  accepted.value = true
-  // Trigger tracking on acceptance
-  if ((window as any).gtag) {
-    (window as any).gtag('config', 'G-5FGBERQXNP');
+declare global {
+  interface Window {
+    gtag?: (...args: unknown[]) => void
   }
 }
 
-const decline = () => {
-  localStorage.setItem('cookieConsent', 'false')
+const TRACKING_ID = 'G-5FGBERQXNP'
+const accepted = ref(true)
+
+const startTracking = () => {
+  window.gtag?.('config', TRACKING_ID)
+}
+
+onMounted(() => {
+  try {
+    const cookieConsent = window.localStorage.getItem('cookieConsent')
+    accepted.value = cookieConsent === 'true' || cookieConsent === 'false'
+
+    if (cookieConsent === 'true') {
+      startTracking()
+    }
+  } catch {
+    // Show the banner when browser storage is unavailable.
+    accepted.value = false
+  }
+})
+
+const persistConsent = (value: 'true' | 'false') => {
+  try {
+    window.localStorage.setItem('cookieConsent', value)
+  } catch {
+    // Continue with the user's choice when browser storage is unavailable.
+  }
   accepted.value = true
+}
+
+const accept = () => {
+  persistConsent('true')
+  startTracking()
+}
+
+const decline = () => {
+  persistConsent('false')
 }
 </script>
 
@@ -43,7 +57,7 @@ const decline = () => {
             <p class="text-secondary text-sm md:text-base leading-relaxed font-body">
               This system uses standard <b>Technical Cookies</b> to ensure stable performance of our web services. 
               Optional tracking modules help us optimize the network and analyze traffic. <br />
-              Review the <a href="https://www.dachain.tech/cookies-policy" target="_blank" class="text-primary hover:underline transition-colors font-bold uppercase text-sm tracking-widest">Cookie_Protocol</a> for comprehensive details.
+              Review the <a href="https://www.dachain.tech/cookies-policy" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline transition-colors font-bold uppercase text-sm tracking-widest">Cookie_Protocol</a> for comprehensive details.
             </p>
           </div>
           <div class="flex flex-wrap md:flex-nowrap shrink-0 gap-4">
